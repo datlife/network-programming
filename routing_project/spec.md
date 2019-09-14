@@ -4,14 +4,15 @@ In this assignment, you'll implement distance-vector routing, a distributed rout
 
 #### Logistics
 
-- This project is due on Monday 10/10 at 11:59pm.
-- This project should be completed individually or in pairs (refer to the [course website](http://cs168.io/about.html) for collaboration policies). Additionally, you may share your tests with anyone in the class.
-- The skeleton code for this project is available on [GitHub](https://github.com/NetSys/cs168_student/blob/master/projects/proj2_routing). You can download the code manually from that page, or use Git.
+- This project is due on Friday 10/6 at 11:59pm.
+- This project should be completed **individually**. You may share your tests with anyone in the class.
+- The skeleton code for this project is available on [GitHub](https://github.com/NetSys/cs168fall17_student/blob/master/projects/proj2_routing/). You can download the code manually from that page, or use Git.
 - You'll submit your code using `ok`. You should submit two files: one named `learning_switch.py` and one named `dv_router.py`. You should write your own tests by adding files to `tests/` and `topos/`, but no need to submit them. Don't modify `simulator.py` or anything in `sim/`. More detailed submission instructions can be found in the [submission details](#submission-details) section.
+- You may develop this project using the operating system of your choice (Windows, Mac OS X and Linux systems should all work) and using either Python 2 or Python 3. **However, make sure your code runs using Python 2 on the instructional (Unix) machines, because this is what we will be using to grade the code**
 
 #### Resources
 
-- If you have questions, first take a look at the [FAQ section](#faq).  If your question isn't answered there, post to Piazza.
+- If you have questions, first take a look at the [FAQ page](faq.md).  If your question isn't answered there, post to Piazza.
 - The distance-vector routing protocol you'll implement is similar to RIP. [RFC 2453](https://www.ietf.org/rfc/rfc2453.txt) describes RIPv2 and might be helpful for understanding the subtleties of this assignment. It covers several features of RIP that your distance-vector router should also implement, particularly split horizon and split horizon with poisoned reverse (3.4.3), and timed updates and route expiration (3.8). RIP has a few features that we don't require you to implement for this assignment, including triggered updates (3.4.4) and hold-down.
 
 ## Background on routing
@@ -38,6 +39,8 @@ To get started, you will implement a learning switch, which learns the location 
 
 Recall from class that a learning switch is not a very effective routing technique; its greatest shortcoming is that it breaks when the network has loops.  That's why our next step will be to implement a more capable distance vector router.  That's also why you only need to test it on topologies without loops.
 
+Additionally, a learning switch that never exchanges routing messages will not be able to avoid routing loops in case of topology change (e.g., if a host moves from one switch to another). You therefore only need to test on static topologies without failures.
+
 ## Part 2: Distance-Vector Router
 
 We've provided a skeleton `dv_router.py` file with the beginnings of a `DVRouter` class for you to flesh out, implementing your distance vector router. The `DVRouter` class inherits from the `DVRouterBase` class, which adds a little bit to the basic `Entity` class.  Specifically, it adds a `POISON_MODE` flag and a `handle_timer` method.  When your router's `self.POISON_MODE` is `True`, your router should send poisoned routes and poisoned reverses (and when `False`, it should not).  The `handle_timer` method is called periodically.  When it is called, your router should send all its routes to its neighbors.
@@ -60,7 +63,7 @@ Your implementation should perform the following:
 - **Split horizon**. Don't advertise a route back onto the port it came from. When poison mode is turned off, this should result in *simple split horizon*, where your router simply does not advertise such routes and instead waits for them to expire. When poison mode is turned on, this should result in *split horizon with poisoned reverse*, where your router instead advertises such routes as having infinite cost.
 - **Don't "hairpin" a packet**. Never forward a data packet back out the port it arrived on... this is seldom helpful.
 - **Implement infinity as 16**. Note that split horizon with poisoned reverse is not sufficient for preventing count-to-infinity in some cases (see lecture notes for examples). To deal with such un-preventable cases, your distance vector router should treat destinations with long distances as unreachable. For this project, your implementation should stop counting at 16 and remove routes to corresponding destinations. We will make sure that no valid path in our test scenarios exceeds this length.
-- **Deal with changes**. Your solution should quickly and efficiently generate new, optimal routes when the topology changes (e.g., when links are added or removed).
+- **Deal with changes**. Your solution should quickly and efficiently generate new, optimal routes when the topology changes (e.g., when links are added or removed). For example, it shouldn't take more than 5 seconds (one timer interval) for the route to a new host to propagate from one router to its neighbors. Note that you only need to send routing updates in `handle_timer` (i.e., you are only required to implement timed updates); you do not need to send routing updates immediately when other events happen, but you can if you want (i.e., triggered updates are optional).
 
 ## Rules
 
@@ -68,25 +71,38 @@ Your implementation should perform the following:
 
 - **Your learning switch and router should only communicate with other instances via the sending of packets.**  Global variables, class variables, calling methods on other instances, etc. are not allowed -- each instance should be entirely standalone.
 
-- **The project is designed to be solved independently, but you may work in partners if you wish.** Grading will remain the same whether you choose to work alone or in partners. Both partners will receive the same grade regardless of the distribution of work between the two partners.
+- **The project is designed to be solved independently. You may not share submitted code with anyone** You may discuss the assignment requirements or your solutions away from a computer and without sharing code, but you should not discuss the detailed nature of your solution (e.g., what algorithm was used to compute the routing table). You may share your test code with anyone in the class. Please don't put any code from this project in a public repository.
 
-- **You may not share submitted code with anyone other than your partner.** You may discuss the assignment requirements or your solutions away from a computer and without sharing code, but you should not discuss the detailed nature of your solution (e.g., what algorithm was used to compute the routing table). You may share your test code with anyone in the class. Please don't put any code from this project in a public repository.
+## Tips
 
-## Submission Details
+Some things to do to help you get started
 
-You will be submitting your project on [okpy](http://okpy.org). When you visit the webpage, sign in using your Berkeley email. You should already be automatically registered as a student in the course. If this is not the case or you encounter any issues, please fill out this [form](https://docs.google.com/a/berkeley.edu/forms/d/e/1FAIpQLScA8gyPc1C0bNCAqWyKWWZRANuXBP2yslFeddtrwtvI6pyIjA/viewform).
-
-You can then upload your project files into the "Project 2" assignment by selecting the assignment and then selecting to create a new submission. You will not be receiving any feedback from the autograder until the project is over, but you can submit as many times as you want. By default, your most recent submission will be graded. If you don't want this behavior, you can select to have a previous one graded instead.
+- Read `sim/api.py` to get some helpful methods, particularly involving timers
+- Manually work through the count-to-infinity example at the bottom of the [FAQ page](faq.md) to make sure you understand how that is supposed to work.
+- Write your own tests! Don't assume that the ones we give you are exhaustive
 
 ## FAQ
 
-##### How will our code be tested?
+See the [FAQ page](faq.md).
 
-We will put your routers through a variety of scenarios like the test cases included with the project. These scenarios will involve different topologies, topology changes, and link failures, and your routers will be graded on how well they deliver packets, adapt to changes, and conform to the requirements. These tests will be more extensive than the tests included with the project in `tests/`, and passing those tests is no guarantee that your code will pass all of our tests.
+## Submission Details
 
-##### Does our code have to be optimized?
+You will be submitting your project on [okpy](http://okpy.org). When you visit the webpage, sign in using your Berkeley email. You should already be automatically registered as a student in the course. If this is not the case or you encounter any issues, please fill out this [form](https://docs.google.com/forms/d/e/1FAIpQLSduin2CqBVKc7FjJKYBY1W5sAHxwMtnias4NkhKg6tE5qlghA/viewform).
 
-No, you don't need to worry about your code's resource usage as long as it completes within a reasonable time limit. However, do avoid sending excessive routing updates.
+You can then upload your project files into the "Project 2" assignment by selecting the assignment and then selecting to create a new submission. You will not be receiving any feedback from the autograder until the project is over, but you can submit as many times as you want. By default, your most recent submission will be graded. If you don't want this behavior, you can select to have a previous one graded instead.
+
+## Changelog
+
+Updates/changes to the project will go here
+
+#### 18 September 2017
+
+- Clarify in "Logistics" that the project can be completed on Windows, Linux or Mac OS X, and in either Python 2 or 3, provided that the submitted project runs on a Linux system using Python 2
+
+#### 27 September 2017
+
+- Change `netvis` to `NetVis` for case-sensitive filesystems
+- Add notes to `simulator_guide.md` for Windows installation
 
 ## Acknowledgments
 
